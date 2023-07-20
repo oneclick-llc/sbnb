@@ -33,7 +33,7 @@ function mergePropsStack(
   );
 }
 
-interface Props {
+export interface StatusBarProps {
   backgroundColor?: string;
   translucent?: boolean;
   barStyle?: ('default' | 'light-content' | 'dark-content'),
@@ -119,7 +119,7 @@ function _updatePropsStack() {
 }
 
 
-export function StatusBar(props: Props) {
+export function StatusBar(props: StatusBarProps) {
   const _stackEntry = useRef<any>()
 
   try {
