@@ -53,12 +53,12 @@ class SbnbModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod(isBlockingSynchronousMethod = true)
   fun statusBarHeight(): Double {
-    return PixelUtil.toDIPFromPixel(currentActivity!!.statusBarHeight.toFloat()).toDouble()
+    return PixelUtil.toDIPFromPixel(reactApplicationContext.currentActivity!!.statusBarHeight.toFloat()).toDouble()
   }
   @ReactMethod(isBlockingSynchronousMethod = true)
   fun navigationBarHeight(): Double {
     if (isFitsSystemWindows) return 0.0
-    return PixelUtil.toDIPFromPixel(currentActivity!!.navigationBarHeight.toFloat()).toDouble()
+    return PixelUtil.toDIPFromPixel(reactApplicationContext.currentActivity!!.navigationBarHeight.toFloat()).toDouble()
   }
 
   @ReactMethod
@@ -68,8 +68,8 @@ class SbnbModule(reactContext: ReactApplicationContext) :
   }
 
   private fun applyStatusBarStyle(dark: Boolean) {
-    currentActivity?.runOnUiThread {
-      val activity = currentActivity ?: return@runOnUiThread
+    reactApplicationContext.currentActivity?.runOnUiThread {
+      val activity = reactApplicationContext.currentActivity ?: return@runOnUiThread
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return@runOnUiThread
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.decorView.windowInsetsController?.setSystemBarsAppearance(
@@ -106,8 +106,8 @@ class SbnbModule(reactContext: ReactApplicationContext) :
   }
 
   private fun applySystemUIColor(color: Double) {
-    currentActivity?.runOnUiThread {
-      currentActivity?.let {
+    reactApplicationContext.currentActivity?.runOnUiThread {
+      reactApplicationContext.currentActivity?.let {
         val newColor = ColorPropConverter.getColor(color, it) ?: Color.MAGENTA
         it.window.statusBarColor = newColor
         if (isFitsSystemWindows || it.systemNavigationMode != SystemNavigationMode.GESTURE) {
