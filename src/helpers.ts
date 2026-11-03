@@ -27,6 +27,11 @@ export function setStatusBarStyle(dark: boolean) {
   return Sbnb.setStatusBarStyle(dark)
 }
 
+export function setStatusBarHidden(hidden: boolean) {
+  if (Platform.OS === 'ios') return
+  return Sbnb.setStatusBarHidden(hidden)
+}
+
 export function toggleFitsSystemWindows(isEnabled: boolean) {
   if (Platform.OS === 'ios') return
   return Sbnb.toggleFitsSystemWindows(!isEnabled)

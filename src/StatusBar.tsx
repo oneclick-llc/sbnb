@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useRef} from "react";
 import {Platform} from "react-native";
-import {setStatusBarStyle, setSystemUIColor, toggleFitsSystemWindows as _toggleFitsSystemWindows} from "./index";
+import {setStatusBarHidden, setStatusBarStyle, setSystemUIColor, toggleFitsSystemWindows as _toggleFitsSystemWindows} from "./index";
 // @ts-ignore
 import NativeStatusBarManagerIOS from 'react-native/Libraries/Components/StatusBar/NativeStatusBarManagerIOS'
 
@@ -11,6 +11,7 @@ function createStackEntry(props: any): any {
     barStyle: props.barStyle,
     translucent: props.translucent,
     hidden: props.hidden,
+    showHideTransition: props.showHideTransition,
   }
 }
 
@@ -38,13 +39,22 @@ export interface StatusBarProps {
   translucent?: boolean;
   barStyle?: ('default' | 'light-content' | 'dark-content'),
   changeOnFocus?: boolean
+  // Upstream typed and stacked `hidden` but never applied it on either
+  // platform; the patch wires it to RCTStatusBarManager on iOS and the window
+  // insets controller on Android.
+  hidden?: boolean
+  // iOS only — Android's insets controller runs the system's own animation.
+  showHideTransition?: StatusBarShowHideTransition
 }
+
+export type StatusBarShowHideTransition = 'fade' | 'slide' | 'none'
 
 const _propsStack: Array<any> = []
 
 let _updateImmediate: any | undefined
 let _currentValues: {
   hidden: boolean;
+  showHideTransition: StatusBarShowHideTransition;
   translucent: boolean;
   barStyle:('default' | 'light-content' | 'dark-content')
 } | null = null
@@ -54,6 +64,7 @@ let _defaultProps: any = {
   barStyle: 'default',
   translucent: false,
   hidden: false,
+  showHideTransition: 'none',
 }
 
 function toggleFitsSystemWindows(isEnabled: boolean) {
@@ -93,8 +104,21 @@ function _updatePropsStack() {
 
 
 
+    // Only a CHANGE is sent, and the first pass sends only a hide, so a tree
+    // that never asks for `hidden` makes no visibility call at all and never
+    // overrides another owner of the bar.
+    const isHiddenChanged = oldProps
+      ? oldProps.hidden !== mergedProps.hidden
+      : mergedProps.hidden
+
     // Update the props that have changed using the merged values from the props stack.
     if (Platform.OS === 'ios') {
+      if (isHiddenChanged) {
+        NativeStatusBarManagerIOS.setHidden(
+          mergedProps.hidden,
+          mergedProps.showHideTransition,
+        );
+      }
       if (!oldProps || oldProps.barStyle !== mergedProps.barStyle) {
         NativeStatusBarManagerIOS.setStyle(mergedProps.barStyle, false,);
       }
@@ -111,6 +135,9 @@ function _updatePropsStack() {
         mergedProps.translucent
       ) {
         toggleFitsSystemWindows(mergedProps.translucent)
+      }
+      if (isHiddenChanged) {
+        setStatusBarHidden(mergedProps.hidden)
       }
     }
     // Update the current prop values.

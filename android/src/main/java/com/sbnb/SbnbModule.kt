@@ -5,6 +5,8 @@ import android.os.Build
 import android.view.View
 import android.view.WindowInsetsController
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.facebook.react.bridge.ColorPropConverter
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.ReactApplicationContext
@@ -36,10 +38,14 @@ class SbnbModule(reactContext: ReactApplicationContext) :
   // onHostResume — guarantees the resume re-assert sees the latest JS value.
   @Volatile private var lastStatusBarStyleDark: Boolean? = null
   @Volatile private var lastSystemUIColor: Double? = null
+  @Volatile private var lastStatusBarHidden: Boolean? = null
 
   override fun onHostResume() {
     lastSystemUIColor?.let { applySystemUIColor(it) }
     lastStatusBarStyleDark?.let { applyStatusBarStyle(it) }
+    // Only a HIDE is re-asserted: a re-sent show would pull the bar back over
+    // whatever else hid it in the meantime (a full-screen player).
+    if (lastStatusBarHidden == true) applyStatusBarHidden(true)
   }
 
   override fun onHostPause() {}
@@ -116,6 +122,30 @@ class SbnbModule(reactContext: ReactApplicationContext) :
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
           it.window?.isNavigationBarContrastEnforced = false
         }
+      }
+    }
+  }
+
+  // Upstream's JS stacked `hidden` but no native method ever applied it.
+  @ReactMethod
+  fun setStatusBarHidden(hidden: Boolean) {
+    lastStatusBarHidden = hidden
+    applyStatusBarHidden(hidden)
+  }
+
+  private fun applyStatusBarHidden(hidden: Boolean) {
+    reactApplicationContext.currentActivity?.runOnUiThread {
+      val activity = reactApplicationContext.currentActivity ?: return@runOnUiThread
+      val window = activity.window ?: return@runOnUiThread
+      val controller = WindowInsetsControllerCompat(window, window.decorView)
+      if (hidden) {
+        // An edge swipe reveals the bar transiently instead of undoing the
+        // hide, so the JS-owned state stays true.
+        controller.systemBarsBehavior =
+          WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.statusBars())
+      } else {
+        controller.show(WindowInsetsCompat.Type.statusBars())
       }
     }
   }
